@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-header">
+    <img src="https://i.postimg.cc/Pq1HGqZK/459c85fcaa5d9f0762479bf382225ac6.jpg" class="prince-logo">
+    <h1>📋 ADMIN PANEL 📋</h1>
+    <p>KEY APPROVAL MANAGEMENT</p>
+</div>
+
+<div class="card">
+    <div class="grid grid-2">
+        <div class="alert alert-success">
+            <strong>Total Approved Keys:</strong> {{ approved_keys|length }}
+        </div>
+        <div class="alert alert-warning">
+            <strong>Pending Approvals:</strong> {{ pending|length }}
+        </div>
+    </div>
+
+    {% if pending %}
+    <h3>📥 Pending Approval Requests</h3>
+    {% for key, info in pending.items() %}
+    <div class="info-card">
+        <div class="grid grid-3">
+            <div>👤 {{ info.name }}</div>
+            <div>🔑 {{ key }}</div>
+            <div>
+                <a href="{{ url_for('approve_key', key=key) }}" class="btn">✅ Approve</a>
+            </div>
+        </div>
+        <small>Requested: {{ info.timestamp }}</small>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="alert alert-info">No pending approvals</div>
+    {% endif %}
+
+    {% if approved_keys %}
+    <h3>✅ Approved Keys</h3>
+    {% for key, info in approved_keys.items() %}
+    <div class="info-card">
+        <p>👤 {{ info.name }} - 🔑 {{ key }}</p>
+        <small>Approved: {{ info.timestamp }}</small>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}" class="btn btn-full">🚪 Logout</a>
+</div>
+
+<div class="footer">
+    Made with ❤️ by ASHU KING | © 2025
+</div>
+{% endblock %}
