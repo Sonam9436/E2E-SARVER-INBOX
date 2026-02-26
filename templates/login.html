@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-header">
+    <img src="https://i.postimg.cc/Pq1HGqZK/459c85fcaa5d9f0762479bf382225ac6.jpg" class="prince-logo">
+    <h1>🤖 ASHU KIING OFFLINE E2EE 💰</h1>
+    <p>səvən bıllıon smılə's ın ˈhıs world buˈt ɢour's ıs mɢ fαvourıtə___🤖💰</p>
+</div>
+
+<div class="tabs">
+    <a href="#login" class="tab active">🔐 Login</a>
+    <a href="#signup" class="tab">✨ Sign Up</a>
+</div>
+
+<div class="card">
+    <!-- Login Form -->
+    <div id="login">
+        <h3>Welcome Back!</h3>
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            
+            <button type="submit" class="btn btn-full">Login</button>
+        </form>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signup" style="display: none;">
+        <h3>Create New Account</h3>
+        <form method="POST" action="{{ url_for('signup') }}">
+            <div class="form-group">
+                <label for="signup_username">Choose Username</label>
+                <input type="text" class="form-control" id="signup_username" name="username" placeholder="Choose a unique username" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="signup_password">Choose Password</label>
+                <input type="password" class="form-control" id="signup_password" name="password" placeholder="Create a strong password" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Re-enter your password" required>
+            </div>
+            
+            <button type="submit" class="btn btn-full">Create Account</button>
+        </form>
+    </div>
+</div>
+
+<div class="footer">
+    Made with ❤️ by ASHU KING | © 2025
+</div>
+
+<script>
+    // Tab switching functionality
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active tab
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show/hide forms
+            const target = this.getAttribute('href').substring(1);
+            document.getElementById('login').style.display = target === 'login' ? 'block' : 'none';
+            document.getElementById('signup').style.display = target === 'signup' ? 'block' : 'none';
+        });
+    });
+</script>
+{% endblock %}
