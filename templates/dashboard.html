@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-header">
+    <img src="https://i.postimg.cc/Pq1HGqZK/459c85fcaa5d9f0762479bf382225ac6.jpg" class="prince-logo">
+    <h1>🤖 ASHU E2E OFFLINE 😊</h1>
+    <p>səvən bıllıon smıləs ın ˈhıs world buˈt ɢours ıs mɢ fαvourıtə___🤖💰</p>
+</div>
+
+<div class="sidebar">
+    <h3>👤 {{ username }}</h3>
+    <p><strong>User ID:</strong> {{ user_id }}</p>
+    <p><strong>Key:</strong> <code>{{ user_key }}</code></p>
+    <div class="alert alert-success">✅ Key Approved</div>
+    <a href="{{ url_for('logout') }}" class="btn btn-full">🚪 Logout</a>
+</div>
+
+<div class="tabs">
+    <a href="#configuration" class="tab active">⚙️ Configuration</a>
+    <a href="#automation" class="tab">🚀 Automation</a>
+</div>
+
+<!-- Configuration Tab -->
+<div id="configuration" class="card">
+    <h3>Your Configuration</h3>
+    <form method="POST" action="{{ url_for('save_config') }}">
+        <div class="form-group">
+            <label for="chat_id">Chat/Conversation ID</label>
+            <input type="text" class="form-control" id="chat_id" name="chat_id" 
+                   value="{{ user_config.chat_id }}" placeholder="e.g., 1362400298935018">
+            <small>Facebook conversation ID from the URL</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="name_prefix">Hatersname</label>
+            <input type="text" class="form-control" id="name_prefix" name="name_prefix"
+                   value="{{ user_config.name_prefix }}" placeholder="e.g., [END TO END]">
+            <small>Prefix to add before each message</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="delay">Delay (seconds)</label>
+            <input type="number" class="form-control" id="delay" name="delay"
+                   value="{{ user_config.delay }}" min="1" max="300">
+            <small>Wait time between messages</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="cookies">Facebook Cookies (optional - kept private)</label>
+            <textarea class="form-control" id="cookies" name="cookies" rows="4" 
+                      placeholder="Paste your Facebook cookies here (will be encrypted)"></textarea>
+            <small>Your cookies are encrypted and never shown to anyone</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="messages">Messages (one per line)</label>
+            <textarea class="form-control" id="messages" name="messages" rows="6"
+                      placeholder="NP file copy paste karo">{{ user_config.messages }}</textarea>
+            <small>Enter each message on a new line</small>
+        </div>
+        
+        <button type="submit" class="btn btn-full">💾 Save Configuration</button>
+    </form>
+</div>
+
+<!-- Automation Tab -->
+<div id="automation" class="card" style="display: none;">
+    <h3>Automation Control</h3>
+    
+    <div class="grid grid-3">
+        <div class="info-card">
+            <div class="metric-value" id="messageCount">0</div>
+            <div class="metric-label">Messages Sent</div>
+        </div>
+        
+        <div class="info-card">
+            <div class="metric-value" id="status">🛑 Stopped</div>
+            <div class="metric-label">Status</div>
+        </div>
+        
+        <div class="info-card">
+            <div class="metric-value">
+                {% if user_config.chat_id %}
+                    {{ user_config.chat_id[:10] }}...
+                {% else %}
+                    Not Set
+                {% endif %}
+            </div>
+            <div class="metric-label">Chat ID</div>
+        </div>
+    </div>
+
+    <div class="grid grid-2">
+        <button id="startBtn" class="btn btn-full" onclick="startAutomation()">▶️ Start Automation</button>
+        <button id="stopBtn" class="btn btn-full" onclick="stopAutomation()" disabled>⏹️ Stop Automation</button>
+    </div>
+
+    <div class="console-section">
+        <h4 class="console-header">📺 Live Console Output</h4>
+        <div class="console-output" id="logsOutput">
+            <!-- Logs will be populated by JavaScript -->
+        </div>
+        <button class="btn" onclick="refreshLogs()" style="margin-top: 10px;">🔄 Refresh Logs</button>
+    </div>
+</div>
+
+<div class="footer">
+    Made with ❤️ by ASHU KING | © 2025
+</div>
+
+<script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const target = this.getAttribute('href').substring(1);
+            document.getElementById('configuration').style.display = target === 'configuration' ? 'block' : 'none';
+            document.getElementById('automation').style.display = target === 'automation' ? 'block' : 'none';
+        });
+    });
+
+    let logsInterval;
+    let statusInterval;
+
+    function startAutomation() {
+        fetch('{{ url_for("start_automation_route") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('status').textContent = '🟢 Running';
+                startLogsPolling();
+                startStatusPolling();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        });
+    }
+
+    function stopAutomation() {
+        fetch('{{ url_for("stop_automation_route") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('status').textContent = '🛑 Stopped';
+                stopPolling();
+            }
+        });
+    }
+
+    function refreshLogs() {
+        fetchLogs();
+    }
+
+    function fetchLogs() {
+        fetch('{{ url_for("get_logs") }}')
+            .then(response => response.json())
+            .then(data => {
+                const logsOutput = document.getElementById('logsOutput');
+                logsOutput.innerHTML = data.logs.map(log => 
+                    `<div class="console-line">${log}</div>`
+                ).join('');
+                logsOutput.scrollTop = logsOutput.scrollHeight;
+            });
+    }
+
+    function fetchStatus() {
+        fetch('{{ url_for("get_status") }}')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('messageCount').textContent = data.message_count;
+                if (data.running) {
+                    document.getElementById('status').textContent = '🟢 Running';
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                } else {
+                    document.getElementById('status').textContent = '🛑 Stopped';
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                }
+            });
+    }
+
+    function startLogsPolling() {
+        logsInterval = setInterval(fetchLogs, 2000);
+    }
+
+    function startStatusPolling() {
+        statusInterval = setInterval(fetchStatus, 3000);
+    }
+
+    function stopPolling() {
+        if (logsInterval) clearInterval(logsInterval);
+        if (statusInterval) clearInterval(statusInterval);
+    }
+
+    // Initial load
+    fetchStatus();
+    fetchLogs();
+
+    // Auto-start polling if automation is running
+    {% if automation_state.running %}
+    startLogsPolling();
+    startStatusPolling();
+    document.getElementById('startBtn').disabled = true;
+    document.getElementById('stopBtn').disabled = false;
+    document.getElementById('status').textContent = '🟢 Running';
+    {% endif %}
+</script>
+{% endblock %}
+  
