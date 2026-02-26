@@ -1,1 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-header">
+    <img src="https://i.postimg.cc/Pq1HGqZK/459c85fcaa5d9f0762479bf382225ac6.jpg" class="prince-logo">
+    <h1>🔐 Admin Login</h1>
+    <p>Administrator Access Required</p>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('admin_panel') }}">
+        <div class="form-group">
+            <label for="password">Enter Admin Password</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        
+        <div class="grid grid-2">
+            <button type="submit" class="btn btn-full">✅ Login</button>
+            <a href="{{ url_for('approval_request') }}" class="btn btn-full">🔙 Back</a>
+        </div>
+    </form>
+</div>
+
+<div class="footer">
+    Made with ❤️ by ASHU KING | © 2025
+</div>
+{% endblock %}
 
