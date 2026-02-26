@@ -1,40 +1,127 @@
 import sqlite3
-import json
 import os
 
 DB_NAME = "automation_app.db"
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_NAME)
+    """Database connection create karne ke liye"""
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    """Database tables create karne ke liye jab app pehli baar chale"""
+    """Table create karne ka function"""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # Single line execution for stability
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                username TEXT,
+                password TEXT,
+                cookies TEXT,
+                chat_id TEXT,
+                delay INTEGER DEFAULT 5,
+                messages TEXT,
+                name_prefix TEXT,
+                is_running INTEGER DEFAULT 0,
+                admin_e2ee_thread_id TEXT
+            )
+        ''')
+        conn.commit()
+        print("Database initialized successfully!")
+    except Exception as e:
+        print(f"Database error: {e}")
+    finally:
+        conn.close()
+
+# --- Automation Status Functions ---
+
+def set_automation_running(user_id, status):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET is_running = ? WHERE user_id = ?",
+        (1 if status else 0, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+def is_automation_running(user_id):
+    conn = get_db_connection()
+    user = conn.execute("SELECT is_running FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if user:
+        return True if user['is_running'] == 1 else False
+    return False
+
+# --- Admin & Thread Functions ---
+
+def get_admin_e2ee_thread_id(user_id):
+    conn = get_db_connection()
+    user = conn.execute("SELECT admin_e2ee_thread_id FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user['admin_e2ee_thread_id'] if user else None
+
+def save_admin_e2ee_thread_id(user_id, thread_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET admin_e2ee_thread_id = ? WHERE user_id = ?",
+        (thread_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+# --- User Data Management ---
+
+def save_user_config(user_id, config_data):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Users aur unki configuration ke liye table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id TEXT PRIMARY KEY,
-            username TEXT,
-            password TEXT,
-            cookies TEXT,
-            chat_id TEXT,
-            delay INTEGER DEFAULT 5,
-            messages TEXT,
-            name_prefix TEXT,
-            is_running BOOLEAN DEFAULT 0,
-            admin_e2ee_thread_id TEXT
-        )
-    ''')
+    # Check if user exists
+    user = conn.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    
+    if user:
+        cursor.execute('''
+            UPDATE users SET 
+            cookies = ?, chat_id = ?, delay = ?, messages = ?, name_prefix = ?
+            WHERE user_id = ?
+        ''', (
+            config_data.get('cookies'),
+            config_data.get('chat_id'),
+            config_data.get('delay'),
+            config_data.get('messages'),
+            config_data.get('name_prefix'),
+            user_id
+        ))
+    else:
+        cursor.execute('''
+            INSERT INTO users (user_id, cookies, chat_id, delay, messages, name_prefix, is_running)
+            VALUES (?, ?, ?, ?, ?, ?, 0)
+        ''', (
+            user_id,
+            config_data.get('cookies'),
+            config_data.get('chat_id'),
+            config_data.get('delay'),
+            config_data.get('messages'),
+            config_data.get('name_prefix')
+        ))
     
     conn.commit()
     conn.close()
 
-# --- Automation Status Functions ---
+def get_user_config(user_id):
+    conn = get_db_connection()
+    user = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    if user:
+        return dict(user)
+    return None
 
+# Database ko initialize karein jab file load ho
+init_db()
 def set_automation_running(user_id, status):
     """User ki automation state (running/stopped) update karein"""
     conn = get_db_connection()
