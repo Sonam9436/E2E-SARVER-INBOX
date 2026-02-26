@@ -1,40 +1,130 @@
 import sqlite3
-import hashlib
-from pathlib import Path
-from cryptography.fernet import Fernet
+import json
 import os
 
-DB_PATH = Path(__file__).parent / 'users.db'
-ENCRYPTION_KEY_FILE = Path(__file__).parent / '.encryption_key'
+DB_NAME = "automation_app.db"
 
-def get_encryption_key():
-    """Get or create encryption key for cookie storage"""
-    if ENCRYPTION_KEY_FILE.exists():
-        with open(ENCRYPTION_KEY_FILE, 'rb') as f:
-            return f.read()
-    else:
-        key = Fernet.generate_key()
-        with open(ENCRYPTION_KEY_FILE, 'wb') as f:
-            f.write(key)
-        return key
-
-ENCRYPTION_KEY = get_encryption_key()
-cipher_suite = Fernet(ENCRYPTION_KEY)
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    """Initialize database with tables"""
-    conn = sqlite3.connect(DB_PATH)
+    """Database tables create karne ke liye jab app pehli baar chale"""
+    conn = get_db_connection()
     cursor = conn.cursor()
     
+    # Users aur unki configuration ke liye table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            user_id TEXT PRIMARY KEY,
+            username TEXT,
+            password TEXT,
+            cookies TEXT,
+            chat_id TEXT,
+            delay INTEGER DEFAULT 5,
+            messages TEXT,
+            name_prefix TEXT,
+            is_running BOOLEAN DEFAULT 0,
+            admin_e2ee_thread_id TEXT
         )
     ''')
     
+    conn.commit()
+    conn.close()
+
+# --- Automation Status Functions ---
+
+def set_automation_running(user_id, status):
+    """User ki automation state (running/stopped) update karein"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET is_running = ? WHERE user_id = ?",
+        (1 if status else 0, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+def is_automation_running(user_id):
+    """Check karein ke kya automation chal rahi hai"""
+    conn = get_db_connection()
+    user = conn.execute("SELECT is_running FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user['is_running'] if user else False
+
+# --- Admin & Thread Functions ---
+
+def get_admin_e2ee_thread_id(user_id):
+    """Admin ki encrypted chat ID nikalne ke liye"""
+    conn = get_db_connection()
+    user = conn.execute("SELECT admin_e2ee_thread_id FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    return user['admin_e2ee_thread_id'] if user else None
+
+def save_admin_e2ee_thread_id(user_id, thread_id):
+    """Admin thread ID save karne ke liye"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE users SET admin_e2ee_thread_id = ? WHERE user_id = ?",
+        (thread_id, user_id)
+    )
+    conn.commit()
+    conn.close()
+
+# --- User Data Management ---
+
+def save_user_config(user_id, config_data):
+    """User ki settings (cookies, messages, delay) save karein"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Check if user exists
+    user = conn.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    
+    if user:
+        cursor.execute('''
+            UPDATE users SET 
+            cookies = ?, chat_id = ?, delay = ?, messages = ?, name_prefix = ?
+            WHERE user_id = ?
+        ''', (
+            config_data.get('cookies'),
+            config_data.get('chat_id'),
+            config_data.get('delay'),
+            config_data.get('messages'),
+            config_data.get('name_prefix'),
+            user_id
+        ))
+    else:
+        cursor.execute('''
+            INSERT INTO users (user_id, cookies, chat_id, delay, messages, name_prefix)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            user_id,
+            config_data.get('cookies'),
+            config_data.get('chat_id'),
+            config_data.get('delay'),
+            config_data.get('messages'),
+            config_data.get('name_prefix')
+        ))
+    
+    conn.commit()
+    conn.close()
+
+def get_user_config(user_id):
+    """User ki configuration wapis lane ke liye"""
+    conn = get_db_connection()
+    user = conn.execute("SELECT * FROM users WHERE user_id = ?", (user_id,)).fetchone()
+    conn.close()
+    
+    if user:
+        return dict(user)
+    return None
+
+# Database initialize karein
+if not os.path.exists(DB_NAME):
+    init_db()    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_configs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
